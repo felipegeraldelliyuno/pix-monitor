@@ -8,6 +8,7 @@ import feedparser
 import json
 import os
 import requests
+import time
 from datetime import datetime, timezone, timedelta
 
 SLACK_WEBHOOK = os.environ["SLACK_WEBHOOK"]
@@ -15,6 +16,9 @@ STATE_FILE = "state.json"
 
 # Janela de tempo para considerar notícias do mesmo incidente (em horas)
 JANELA_INCIDENTE_HORAS = 12
+
+# Só processa notícias publicadas nas últimas X horas
+MAX_IDADE_NOTICIA_HORAS = 24
 
 FEEDS = [
     "https://news.google.com/rss/search?q=queda+pix&hl=pt-BR&gl=BR&ceid=BR:pt-419",
@@ -35,6 +39,14 @@ def load_state():
 def save_state(seen, ultimo_incidente):
     with open(STATE_FILE, "w") as f:
         json.dump({"seen": list(seen), "ultimo_incidente": ultimo_incidente}, f)
+
+
+def e_recente(entry):
+    published_parsed = entry.get("published_parsed")
+    if not published_parsed:
+        return True  # sem data, deixa passar
+    publicado = datetime.fromtimestamp(time.mktime(published_parsed), tz=timezone.utc)
+    return (datetime.now(timezone.utc) - publicado) <= timedelta(hours=MAX_IDADE_NOTICIA_HORAS)
 
 
 def e_novo_incidente(ultimo_incidente):
@@ -74,6 +86,10 @@ def main():
             for entry in feed.entries:
                 entry_id = entry.get("id") or entry.get("link")
                 if not entry_id or entry_id in seen:
+                    continue
+
+                if not e_recente(entry):
+                    new_seen.add(entry_id)  # marca como vista para não checar de novo
                     continue
 
                 new_seen.add(entry_id)
