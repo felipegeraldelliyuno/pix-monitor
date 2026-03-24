@@ -1,0 +1,33 @@
+name: Monitor Pix
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  monitorar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Executar monitoramento
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        run: python pix_monitor.py
+
+      - name: Salvar notícias já vistas
+        run: |
+          git config user.name "Pix Monitor"
+          git config user.email "bot@pixmonitor"
+          git add seen.json
+          git diff --cached --quiet || git commit -m "Atualiza notícias vistas"
+          git push
