@@ -47,7 +47,7 @@ def e_novo_incidente(ultimo_incidente):
 
 def send_slack(title, url, source, published, novo_incidente, contagem):
     if novo_incidente:
-        cabecalho = ":rotating_light: *NOVO INCIDENTE — Pix com instabilidade*"
+        cabecalho = ":rotating_light: <!here> *NOVO INCIDENTE — Pix com instabilidade*"
     else:
         cabecalho = f":newspaper: *Mais cobertura do incidente em andamento* (notícia #{contagem})"
 
