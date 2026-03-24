@@ -102,7 +102,13 @@ def main():
                 title = entry.get("title", "Sem título")
                 url = entry.get("link", "")
                 source = entry.get("source", {}).get("title", "Google News")
-                published = entry.get("published", "")
+                published_parsed = entry.get("published_parsed")
+                if published_parsed:
+                    dt_utc = datetime.fromtimestamp(time.mktime(published_parsed), tz=timezone.utc)
+                    dt_brt = dt_utc - timedelta(hours=3)
+                    published = dt_brt.strftime("%d/%m/%Y %H:%M (horário de Brasília)")
+                else:
+                    published = entry.get("published", "")
 
                 novo = e_novo_incidente(ultimo_incidente)
 
