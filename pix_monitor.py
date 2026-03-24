@@ -67,7 +67,7 @@ def send_slack(title, url, source, published, novo_incidente, contagem):
         f"{cabecalho}\n"
         f"*{title}*\n"
         f"_{source}_ — {published}\n"
-        f"{url}"
+        f"<{url}|Leia a notícia completa>"
     )
     response = requests.post(SLACK_WEBHOOK, json={
         "text": text,
