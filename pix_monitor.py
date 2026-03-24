@@ -8,10 +8,13 @@ import feedparser
 import json
 import os
 import requests
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 SLACK_WEBHOOK = os.environ["SLACK_WEBHOOK"]
-SEEN_FILE = "seen.json"
+STATE_FILE = "state.json"
+
+# Janela de tempo para considerar notícias do mesmo incidente (em horas)
+JANELA_INCIDENTE_HORAS = 12
 
 FEEDS = [
     "https://news.google.com/rss/search?q=queda+pix&hl=pt-BR&gl=BR&ceid=BR:pt-419",
@@ -21,21 +24,35 @@ FEEDS = [
 ]
 
 
-def load_seen():
-    if os.path.exists(SEEN_FILE):
-        with open(SEEN_FILE) as f:
-            return set(json.load(f))
-    return set()
+def load_state():
+    if os.path.exists(STATE_FILE):
+        with open(STATE_FILE) as f:
+            data = json.load(f)
+            return set(data.get("seen", [])), data.get("ultimo_incidente")
+    return set(), None
 
 
-def save_seen(seen):
-    with open(SEEN_FILE, "w") as f:
-        json.dump(list(seen), f)
+def save_state(seen, ultimo_incidente):
+    with open(STATE_FILE, "w") as f:
+        json.dump({"seen": list(seen), "ultimo_incidente": ultimo_incidente}, f)
 
 
-def send_slack(title, url, source, published):
+def e_novo_incidente(ultimo_incidente):
+    if not ultimo_incidente:
+        return True
+    ultimo = datetime.fromisoformat(ultimo_incidente)
+    agora = datetime.now(timezone.utc)
+    return (agora - ultimo) > timedelta(hours=JANELA_INCIDENTE_HORAS)
+
+
+def send_slack(title, url, source, published, novo_incidente, contagem):
+    if novo_incidente:
+        cabecalho = ":rotating_light: *NOVO INCIDENTE — Pix com instabilidade*"
+    else:
+        cabecalho = f":newspaper: *Mais cobertura do incidente em andamento* (notícia #{contagem})"
+
     text = (
-        f":rotating_light: *Nova notícia sobre instabilidade no Pix*\n"
+        f"{cabecalho}\n"
         f"*{title}*\n"
         f"_{source}_ — {published}\n"
         f"{url}"
@@ -46,9 +63,10 @@ def send_slack(title, url, source, published):
 
 
 def main():
-    seen = load_seen()
+    seen, ultimo_incidente = load_state()
     new_seen = set(seen)
     found = 0
+    contagem_incidente = 0
 
     for feed_url in FEEDS:
         try:
@@ -66,13 +84,22 @@ def main():
                 source = entry.get("source", {}).get("title", "Google News")
                 published = entry.get("published", "")
 
-                send_slack(title, url, source, published)
-                print(f"Notícia enviada: {title}")
+                novo = e_novo_incidente(ultimo_incidente)
+
+                if novo:
+                    contagem_incidente = 1
+                    ultimo_incidente = datetime.now(timezone.utc).isoformat()
+                    print(f"NOVO INCIDENTE: {title}")
+                else:
+                    contagem_incidente += 1
+                    print(f"Cobertura #{contagem_incidente}: {title}")
+
+                send_slack(title, url, source, published, novo, contagem_incidente)
 
         except Exception as e:
             print(f"Erro ao processar feed: {e}")
 
-    save_seen(new_seen)
+    save_state(new_seen, ultimo_incidente)
     print(f"Concluído. {found} nova(s) notícia(s) enviada(s).")
 
 
