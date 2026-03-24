@@ -69,7 +69,11 @@ def send_slack(title, url, source, published, novo_incidente, contagem):
         f"_{source}_ — {published}\n"
         f"{url}"
     )
-    response = requests.post(SLACK_WEBHOOK, json={"text": text}, timeout=10)
+    response = requests.post(SLACK_WEBHOOK, json={
+        "text": text,
+        "username": "Pix Monitor",
+        "icon_url": "https://www.bcb.gov.br/content/estabilidadefinanceira/piximg/logo_pix.png"
+    }, timeout=10)
     if response.status_code != 200:
         print(f"Erro ao enviar pro Slack: {response.status_code} {response.text}")
 
