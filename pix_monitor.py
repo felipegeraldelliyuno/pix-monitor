@@ -20,6 +20,35 @@ JANELA_INCIDENTE_HORAS = 12
 # Só processa notícias publicadas nas últimas X horas
 MAX_IDADE_NOTICIA_HORAS = 24
 
+# Palavras que indicam artigos informativos (não são alertas de incidente)
+PALAVRAS_EXCLUIR = [
+    "alternativ",
+    "conheça",
+    "saiba",
+    "dica",
+    "como transferir",
+    "como pagar",
+    "como usar",
+    "o que fazer",
+    "aprenda",
+    "substituir",
+    "opções",
+    "outras formas",
+]
+
+
+def e_noticia_de_incidente(title):
+    title_lower = title.lower()
+    # Deve conter "pix" no título
+    if "pix" not in title_lower:
+        return False
+    # Não deve conter palavras de artigos informativos
+    for palavra in PALAVRAS_EXCLUIR:
+        if palavra in title_lower:
+            return False
+    return True
+
+
 FEEDS = [
     "https://news.google.com/rss/search?q=queda+pix&hl=pt-BR&gl=BR&ceid=BR:pt-419",
     "https://news.google.com/rss/search?q=instabilidade+pix&hl=pt-BR&gl=BR&ceid=BR:pt-419",
@@ -96,10 +125,15 @@ def main():
                     new_seen.add(entry_id)  # marca como vista para não checar de novo
                     continue
 
+                title = entry.get("title", "Sem título")
+
+                if not e_noticia_de_incidente(title):
+                    new_seen.add(entry_id)  # marca como vista para não checar de novo
+                    print(f"Ignorada (não é incidente): {title}")
+                    continue
+
                 new_seen.add(entry_id)
                 found += 1
-
-                title = entry.get("title", "Sem título")
                 url = entry.get("link", "")
                 source = entry.get("source", {}).get("title", "Google News")
                 published_parsed = entry.get("published_parsed")
