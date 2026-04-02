@@ -36,16 +36,35 @@ PALAVRAS_EXCLUIR = [
     "outras formas",
 ]
 
+# Bancos conhecidos — usados para identificar notícias isoladas de um banco específico
+BANCOS = [
+    "caixa", "nubank", "itaú", "itau", "bradesco", "santander", "inter",
+    "sicoob", "sicredi", "c6", "picpay", "mercado pago", "next", "original",
+    "safra", "bb ", "banco do brasil",
+]
+
+# Termos que, combinados com nome de banco, indicam problema isolado no app do banco
+TERMOS_APP_BANCO = ["app ", "aplicativo"]
+
 
 def e_noticia_de_incidente(title):
     title_lower = title.lower()
+
     # Deve conter "pix" no título
     if "pix" not in title_lower:
         return False
+
     # Não deve conter palavras de artigos informativos
     for palavra in PALAVRAS_EXCLUIR:
         if palavra in title_lower:
             return False
+
+    # Bloqueia se menciona o app de um banco específico (problema isolado, não geral)
+    menciona_banco = any(banco in title_lower for banco in BANCOS)
+    menciona_app = any(termo in title_lower for termo in TERMOS_APP_BANCO)
+    if menciona_banco and menciona_app:
+        return False
+
     return True
 
 
